@@ -1,0 +1,28 @@
+@import "tailwindcss";
+body {
+    overflow-x: hidden;
+    width: 100vw;
+  }
+  
+
+/* Prevent page scroll */
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* Prevent page scrolling */
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide scrollbar globally */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
