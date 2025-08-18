@@ -1,0 +1,28 @@
+Customer List Page:
+	-Allow staff to view customers including non-signed up customers, enable staff to differentiate the two 	edit/update and fill in remainder information required.
+	-Add Leads/Prospects page for BookingRequest customers in sub Customer nav
+	-Ensure not all 'registered customers' can be seen on customer list. segregate customer list as only 	previously dealt with business not all registered customers. 
+
+- Allow marking customers with information to be filled in.
+
+-BookingRequest Form:
+	-Add pickup and drop off locations to booking request form.
+	-Add labels on fields.
+	-Fix Booking Form fields, add all necessary fields e.g vehicle id from dropdown, using "addBooking", as 	-template.
+
+-Customer Details page:
+	-Fix booking table, ensure no horizontal scroll, fit into one page.
+	-ensure table height doesn't stretch when no bookings are available 
+
+-Customer Registration :
+	-Duplicate 'addCustomer' logic, customer registration should automatically create a customer record in the 	 customer model.
+	-Logged in customer booking process must be different from stranger/lead booking.
+
+-CustomerModel:
+	-change unique to true for national_id when switched to PostgreSQL
+	-remove validate national_id serializer 
+
+https://www.nttdata.com/global/en/careers/search-jobs?query=united%20kingdom&page=2
+
+
+https://www.linkedin.com/posts/ngwerumelisa_flutter-mobileappdevelopment-googlemapsapi-activity-7322975355756003328-dOQB?utm_source=share&utm_medium=member_desktop&rcm=ACoAAC4oG4oBdUnHgKl3HVbQY8PC7KjxfuctTt0

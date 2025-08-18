@@ -1,0 +1,28 @@
+# Node
+node_modules/
+npm-debug.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+
+# Env files
+.env
+*.env
+
+# Virtual environments
+venv/
+env/
+
+# Docker
+*.pid
+*.seed
+*.bak
+
+# System files
+.DS_Store
+Thumbs.db
