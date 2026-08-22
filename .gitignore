@@ -26,3 +26,8 @@ env/
 # System files
 .DS_Store
 Thumbs.db
+# VPS / production-only
+docker-compose.prod.yml
+Eazi-Backend/.env
+Eazi-FrontEnd/Dockerfile.prod
+Eazi-FrontEnd/nginx.conf
