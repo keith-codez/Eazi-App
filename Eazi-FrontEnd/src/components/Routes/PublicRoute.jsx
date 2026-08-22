@@ -10,24 +10,23 @@ const PublicRoute = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
- 
-
   if (role === "staff" || role === "agent" || role === "agency") {
     return <Navigate to="/staff/dashboard" replace />;
   }
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen w-full bg-gray-50">
       <PublicSidebar isOpen={isOpen} setIsOpen={setIsOpen} />
   
       <main
         className="
           w-full
-          md:pl-64  // Only add left padding on medium and larger screens
-          pt-16 
-          md:pt-5     // To push content below the fixed top navbar on mobile
+          md:pl-64
+          pt-16
+          md:pt-5
           transition-all
           duration-300
+          min-h-screen
         "
       >
         <div className="w-full px-4">

@@ -1,19 +1,20 @@
 @import "tailwindcss";
-body {
-    overflow-x: hidden;
-    width: 100vw;
-  }
-  
 
-/* Prevent page scroll */
-html, body {
-  height: 100%;
+/* Allow normal, unbounded document scrolling */
+html {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
   margin: 0;
-  overflow: hidden; /* Prevent page scrolling */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #root {
-  height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -23,6 +24,6 @@ html, body {
   display: none;
 }
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;     /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

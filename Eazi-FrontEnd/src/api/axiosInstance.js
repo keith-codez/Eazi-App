@@ -12,10 +12,16 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Skip refreshing if the request is checking auth status or trying to refresh already
+    const skipRefreshUrls = ["auth/me/", "token/refresh/"];
+    const shouldSkipRefresh = skipRefreshUrls.some((url) => 
+      originalRequest.url?.includes(url)
+    );
+
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !originalRequest.url.includes("token/refresh")
+      !shouldSkipRefresh
     ) {
       originalRequest._retry = true;
 
@@ -29,8 +35,8 @@ axiosInstance.interceptors.response.use(
           // Retry original request
           return axiosInstance(originalRequest);
         } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
           isRefreshing = false;
+          // Optionally handle forced logout here if refresh token is completely dead
         }
       }
     }
