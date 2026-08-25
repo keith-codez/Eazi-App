@@ -1,9 +1,7 @@
 from rest_framework import serializers
-from .models import BookingRequest
-from staff.models import Vehicle, VehicleImage, Location, Booking  # For nested data
-from regulator.serializers import CustomerMiniSerializer, CustomerSerializer
-from regulator.models import Customer
 from rest_framework.exceptions import NotAuthenticated
+from .models import BookingRequest
+from staff.models import Vehicle, VehicleImage, Location, Booking
 from staff.serializers import LocationSerializer
 
 
@@ -25,11 +23,10 @@ class VehicleMiniSerializer(serializers.ModelSerializer):
 class BookingRequestSerializer(serializers.ModelSerializer):
     vehicle = VehicleMiniSerializer(read_only=True)
     vehicle_id = serializers.PrimaryKeyRelatedField(queryset=Vehicle.objects.all(), write_only=True)
-    pickup_location_id = serializers.PrimaryKeyRelatedField(queryset=Location.objects.none(), write_only=True)  # initial empty
+    pickup_location_id = serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(), write_only=True)
     dropoff_location_id = serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(), write_only=True)
     customer = serializers.SerializerMethodField()
     has_booking = serializers.SerializerMethodField()
-
 
     class Meta:
         model = BookingRequest
@@ -52,19 +49,28 @@ class BookingRequestSerializer(serializers.ModelSerializer):
             'has_booking',
         ]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        request = self.context.get('request')
-        if request and request.method == 'POST':
-            vehicle_id = request.data.get('vehicle_id')
-            if vehicle_id:
-                try:
-                    vehicle = Vehicle.objects.get(id=vehicle_id)
-                    agency_locations = vehicle.agent.agency.locations.all()  # Assuming Vehicle has a ForeignKey to Agent
-                    self.fields['pickup_location_id'].queryset = agency_locations.all()
-                except Vehicle.DoesNotExist:
-                    pass
+    def _get_vehicle_agency_locations(self, vehicle):
+        """Helper to safely fetch agency locations whether vehicle links to agency or agent."""
+        if hasattr(vehicle, 'agency') and vehicle.agency:
+            return vehicle.agency.locations.all()
+        elif hasattr(vehicle, 'agent') and vehicle.agent and hasattr(vehicle.agent, 'agency'):
+            return vehicle.agent.agency.locations.all()
+        return Location.objects.none()
 
+    def validate(self, data):
+        vehicle = data.get('vehicle_id')
+        pickup_location = data.get('pickup_location_id')
+        dropoff_location = data.get('dropoff_location_id')
+
+        allowed_locations = self._get_vehicle_agency_locations(vehicle)
+
+        if pickup_location not in allowed_locations:
+            raise serializers.ValidationError({"pickup_location_id": "Selected pickup location is not available for this vehicle."})
+
+        if dropoff_location not in allowed_locations:
+            raise serializers.ValidationError({"dropoff_location_id": "Selected dropoff location is not available for this vehicle."})
+
+        return data
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -81,7 +87,7 @@ class BookingRequestSerializer(serializers.ModelSerializer):
         vehicle = validated_data.pop('vehicle_id')
         pickup_location = validated_data.pop('pickup_location_id')
         dropoff_location = validated_data.pop('dropoff_location_id')
-        agent = vehicle.agent
+        agent = getattr(vehicle, 'agent', None)
 
         return BookingRequest.objects.create(
             user=user,
@@ -114,62 +120,39 @@ class BookingRequestSerializer(serializers.ModelSerializer):
             "next_of_kin1_phone": customer.next_of_kin1_phone,
             "drivers_license": customer.drivers_license.url if customer.drivers_license else None,
         }
-        
-    def get_serializer_context(self):
-        return {'request': self.request}
-    
-
-    def validate(self, data):
-        vehicle = data.get('vehicle_id')
-        pickup_location = data.get('pickup_location_id')
-        dropoff_location = data.get('dropoff_location_id')
-
-        if pickup_location not in vehicle.agent.agency.locations.all():
-            raise serializers.ValidationError("Selected pickup location is not available for this vehicle.")
-
-        # Optional: same rule for dropoff if needed
-        if dropoff_location not in vehicle.agent.agency.locations.all():
-            raise serializers.ValidationError("Selected dropoff location is not available for this vehicle.")
-
-        return data
 
     def get_has_booking(self, obj):
         return Booking.objects.filter(booking_request=obj).exists()
+
 
 class PublicVehicleImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = VehicleImage
         fields = ["id", "image"]
         extra_kwargs = {
-            "image": {"use_url": True}  # This ensures the URL is included in the response
+            "image": {"use_url": True}
         }
 
 
-
-pickup_locations = LocationSerializer(many=True, read_only=True)
-
 class PublicVehicleSerializer(serializers.ModelSerializer):
     pickup_locations = serializers.SerializerMethodField()
-    images = PublicVehicleImageSerializer(many=True, read_only=True)  # Include images in the vehicle serializer
+    images = PublicVehicleImageSerializer(many=True, read_only=True)
     agency_name = serializers.SerializerMethodField()
     agency_logo = serializers.SerializerMethodField()
 
-
     class Meta:
         model = Vehicle
-        fields = '__all__'  # This gives you all model fields
-    
+        fields = '__all__'
+
     def get_pickup_locations(self, obj):
         if obj.agency:
             locations = obj.agency.locations.all()
             return LocationSerializer(locations, many=True).data
         return []
-        
-    
+
     def get_agency_name(self, obj):
         return obj.agency.name if obj.agency else None
 
-    
     def get_agency_logo(self, obj):
         try:
             request = self.context.get("request")
@@ -178,8 +161,8 @@ class PublicVehicleSerializer(serializers.ModelSerializer):
         except Exception:
             pass
         return None
-    
-    
+
+
 class StaffBookingRequestUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookingRequest
