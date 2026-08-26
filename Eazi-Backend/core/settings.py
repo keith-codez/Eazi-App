@@ -40,6 +40,8 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",  # same as above
     "http://192.168.100.2:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 # Application definition

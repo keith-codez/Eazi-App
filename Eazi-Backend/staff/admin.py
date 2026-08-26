@@ -21,8 +21,8 @@ class VehicleAdmin(admin.ModelAdmin):
     list_display = ("make", "model", "registration_number", "color", "mileage", "price_per_day", "ownership")
     list_filter = ("ownership", "make", "model")
     search_fields = ("make", "model", "registration_number")
-    inlines = [VehicleImageInline, VehicleUnavailabilityInline]  # ✅ Includes Images & Unavailability
-
+    filter_horizontal = ("locations",)  # Enables multi-select box for locations
+    inlines = [VehicleImageInline, VehicleUnavailabilityInline]
 
 @admin.register(MaintenanceRecord)
 class MaintenanceRecordAdmin(admin.ModelAdmin):

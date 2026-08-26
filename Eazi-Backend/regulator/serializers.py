@@ -1,9 +1,46 @@
 from rest_framework import serializers
-from .models import User, Customer, Agency, Agent
 from django.contrib.auth import authenticate, get_user_model
-
+from .models import Customer, Agency, Agent
 
 User = get_user_model()
+
+
+class CustomerMiniSerializer(serializers.ModelSerializer):
+    """Lightweight customer representation for embedding in staff/booking views."""
+    class Meta:
+        model = Customer
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone_number']
+
+
+class CustomerSerializer(serializers.ModelSerializer):
+    """Full customer profile management serializer."""
+    title = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_null=True)
+    national_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    drivers_license = serializers.ImageField(required=False, allow_null=True)
+
+    next_of_kin1_first_name = serializers.CharField(required=False, allow_blank=True)
+    next_of_kin1_last_name = serializers.CharField(required=False, allow_blank=True)
+    next_of_kin1_id_number = serializers.CharField(required=False, allow_blank=True)
+    next_of_kin1_phone = serializers.CharField(required=False, allow_blank=True)
+
+    next_of_kin2_first_name = serializers.CharField(required=False, allow_blank=True)
+    next_of_kin2_last_name = serializers.CharField(required=False, allow_blank=True)
+    next_of_kin2_id_number = serializers.CharField(required=False, allow_blank=True)
+    next_of_kin2_phone = serializers.CharField(required=False, allow_blank=True)
+
+    last_booking_date = serializers.DateField(required=False, allow_null=True)
+
+    class Meta:
+        model = Customer
+        exclude = ['agents', 'related_agency']
+
+    def validate_national_id(self, value):
+        customer_id = self.instance.id if self.instance else None
+        if value and Customer.objects.exclude(id=customer_id).filter(national_id=value).exists():
+            raise serializers.ValidationError("Customer with this National ID already exists.")
+        return value
+
 
 class CustomerRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -41,7 +78,6 @@ class CustomerRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
-
 class AgentRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     first_name = serializers.CharField(required=True)
@@ -59,9 +95,11 @@ class AgentRegistrationSerializer(serializers.ModelSerializer):
         user.role = 'agent'
         user.save()
 
-        # Create Agent profile with the given first_name, last_name, and user reference
-        Agent.objects.create(user=user, first_name=validated_data['first_name'], last_name=validated_data['last_name'])
-        
+        Agent.objects.create(
+            user=user, 
+            first_name=validated_data['first_name'], 
+            last_name=validated_data['last_name']
+        )
         return user
 
 
@@ -71,7 +109,7 @@ class AgencyRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'name')
+        fields = ['username', 'email', 'password', 'name']
 
     def create(self, validated_data):
         agency_name = validated_data.pop('name')
@@ -85,8 +123,6 @@ class AgencyRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
-
-
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
@@ -95,11 +131,10 @@ class LoginSerializer(serializers.Serializer):
         username_or_email = data['username']
         password = data['password']
 
-        # Check if input looks like an email
         if '@' in username_or_email:
             try:
                 user_obj = User.objects.get(email=username_or_email)
-                username = user_obj.username  # get their username internally
+                username = user_obj.username
             except User.DoesNotExist:
                 raise serializers.ValidationError("Invalid credentials")
         else:
@@ -112,44 +147,6 @@ class LoginSerializer(serializers.Serializer):
         return user
 
 
-class CustomerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        exclude = ['agents', 'related_agency']  # EXCLUDE here instead of "__all__"
-
-
-    def validate_national_id(self, value):
-        if value and Customer.objects.filter(national_id=value).exists():
-            raise serializers.ValidationError("Customer with this National ID already exists.")
-        return value
-
-    # Allow missing fields by setting required=False
-    title = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    email = serializers.EmailField(required=False, allow_null=True)
-    national_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    drivers_license = serializers.ImageField(required=False, allow_null=True)
-
-    # Next of kin fields should be optional
-    next_of_kin1_first_name = serializers.CharField(required=False, allow_blank=True)
-    next_of_kin1_last_name = serializers.CharField(required=False, allow_blank=True)
-    next_of_kin1_id_number = serializers.CharField(required=False, allow_blank=True)
-    next_of_kin1_phone = serializers.CharField(required=False, allow_blank=True)
-
-    next_of_kin2_first_name = serializers.CharField(required=False, allow_blank=True)
-    next_of_kin2_last_name = serializers.CharField(required=False, allow_blank=True)
-    next_of_kin2_id_number = serializers.CharField(required=False, allow_blank=True)
-    next_of_kin2_phone = serializers.CharField(required=False, allow_blank=True)
-
-    last_booking_date = serializers.DateField(required=False, allow_null=True)
-
-    def validate_national_id(self, value):
-        customer_id = self.instance.id if self.instance else None
-        if Customer.objects.exclude(id=customer_id).filter(national_id=value).exists():
-            raise serializers.ValidationError("Customer with this National ID already exists.")
-        return value
-
-
-
 class AgencySerializer(serializers.ModelSerializer):
     class Meta:
         model = Agency
@@ -160,9 +157,3 @@ class AgentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Agent
         fields = "__all__"
-
-
-class CustomerMiniSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = ['id', 'first_name', 'last_name', 'email', 'phone']
