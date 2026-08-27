@@ -1,6 +1,7 @@
 // Agent Pages
 export { default as Dashboard } from "./Agent/Dashboard/Dashboard.jsx";
 export { default as VehicleList } from "./Agent/fleet/VehicleList.jsx";
+export { default as VehicleDetail } from "./Agent/fleet/VehicleDetails.jsx";
 export { default as AddVehicle } from "./Agent/fleet/AddVehicle.jsx";
 export { default as EditVehicle } from "./Agent/fleet/EditVehicle.jsx";
 export { default as MaintenanceRecords } from "./Agent/fleet/MaintenanceRecords.jsx";

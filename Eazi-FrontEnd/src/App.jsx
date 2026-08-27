@@ -13,6 +13,7 @@ import {
   // Agent Pages
   Dashboard,
   VehicleList,
+  VehicleDetail,
   AddVehicle,
   EditVehicle,
   MaintenanceRecords,
@@ -84,6 +85,7 @@ function App() {
           <Route element={<ProtectedStaffRoute />}>
             <Route path="/staff/dashboard" element={<Dashboard />} />
             <Route path="/fleet/vehicles" element={<VehicleList />} />
+            <Route path="/fleet/vehicles/:id" element={<VehicleDetail />} />
             <Route path="/add-vehicle" element={<AddVehicle />} />
             <Route path="/edit-vehicle/:id" element={<EditVehicle />} />
             <Route path="/fleet/maintenance" element={<MaintenanceRecords />} />

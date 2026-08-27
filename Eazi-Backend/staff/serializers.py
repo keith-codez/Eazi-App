@@ -116,11 +116,28 @@ class VehicleSerializer(serializers.ModelSerializer):
 
 
 class VehicleUnavailabilitySerializer(serializers.ModelSerializer):
+    reason = serializers.CharField(max_length=255, required=False)
     class Meta:
         model = VehicleUnavailability
-        fields = ["id", "vehicle", "start_date", "end_date", "reason"]
+        fields = '__all__'
 
+    def validate(self, data):
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        vehicle = data.get('vehicle')
 
+        if start_date >= end_date:
+            raise serializers.ValidationError({"end_date": "End date must be after start date."})
+
+        # Check overlap against system bookings & existing manual blocks
+        if not vehicle.is_available(start_date, end_date):
+            raise serializers.ValidationError(
+                "This vehicle is already booked or blocked during the selected dates."
+            )
+
+        return data
+
+    
 class BookingSerializer(serializers.ModelSerializer):
     customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all())
     vehicle = serializers.PrimaryKeyRelatedField(queryset=Vehicle.objects.all())

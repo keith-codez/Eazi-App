@@ -1,3 +1,5 @@
+# staff/views.py
+
 from django.contrib.auth import authenticate, get_user_model, login
 from django.db.models import F, Sum
 from django.shortcuts import get_object_or_404
@@ -85,25 +87,62 @@ class VehicleViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("No associated agency found.")
         serializer.save(agency=agency)
 
+    # --- NEW ACTION ADDED HERE ---
+    @action(detail=True, methods=['get'], url_path='occupied-dates')
+    def occupied_dates(self, request, pk=None):
+        """
+        GET /api/staff/vehicles/{id}/occupied-dates/
+        Returns a unified list of both system bookings and manual blocks.
+        This calls the calculated method we added to the Vehicle model.
+        """
+        vehicle = self.get_object()
+        # This calls the method added to the Vehicle model in Part 1
+        return Response(vehicle.get_occupied_ranges())
+
 
 class MaintenanceRecordViewSet(viewsets.ModelViewSet):
-    queryset = MaintenanceRecord.objects.all()
+    # It's better to explicitly set the serializer_class here too
     serializer_class = MaintenanceRecordSerializer
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsAgent]
+
+    def get_queryset(self):
+        # Filter maintenance records by agency
+        agency = get_user_agency(self.request.user)
+        queryset = MaintenanceRecord.objects.filter(vehicle__agency=agency)
+
+        vehicle_id = self.request.query_params.get('vehicle')
+        if vehicle_id:
+            queryset = queryset.filter(vehicle_id=vehicle_id)
+        return queryset
 
 
-class VehicleUnavailabilityListCreateView(generics.ListCreateAPIView):
-    queryset = VehicleUnavailability.objects.all()
+# --- REFACTORED FROM GENERIC VIEW TO MODELVIEWSET ---
+class VehicleUnavailabilityViewSet(viewsets.ModelViewSet):
+    """
+    CRUD endpoint for agents to manually block/unblock dates (e.g. external rentals).
+    Handles POST (create), GET (list/detail), PATCH (update), DELETE (destroy).
+    """
     serializer_class = VehicleUnavailabilitySerializer
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsAgent]
 
+    def get_queryset(self):
+        # Filter manual blocks by agency
+        agency = get_user_agency(self.request.user)
+        queryset = VehicleUnavailability.objects.filter(vehicle__agency=agency)
 
-class VehicleCreateView(generics.CreateAPIView):
-    queryset = Vehicle.objects.all()
-    serializer_class = VehicleSerializer
+        vehicle_id = self.request.query_params.get('vehicle')
+        if vehicle_id:
+            queryset = queryset.filter(vehicle_id=vehicle_id)
+        return queryset
 
 
 class VehicleImageViewSet(viewsets.ModelViewSet):
     queryset = VehicleImage.objects.all()
     serializer_class = VehicleImageSerializer
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsAgent]
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -114,6 +153,8 @@ class VehicleImageViewSet(viewsets.ModelViewSet):
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsAgent]
 
     @action(detail=False, methods=['get'], url_path='customer/(?P<customer_id>\\d+)')
     def customer_bookings(self, request, customer_id=None):
@@ -123,7 +164,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+# Not refactoring this one, but ensured imports are correct above.
 class FinalizeBookingView(APIView):
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated, IsCustomer]
 
     def post(self, request, booking_request_id):

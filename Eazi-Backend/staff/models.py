@@ -10,7 +10,7 @@ import os
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from regulator.models import Customer, Agent, Agency
-
+from django.db.models import Q
 
 
 
@@ -31,7 +31,7 @@ class Vehicle(models.Model):
         ("private", "Privately Owned"),
     ]
     agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='vehicles')
-    locations = models.ManyToManyField(Location, related_name='vehicles', blank=True)  # ADD THIS FIELD
+    locations = models.ManyToManyField(Location, related_name='vehicles', blank=True)
     make = models.CharField(max_length=100)
     model = models.CharField(max_length=100)
     manufacture_year = models.PositiveIntegerField()
@@ -47,15 +47,71 @@ class Vehicle(models.Model):
 
     def __str__(self):
         return f"{self.make} {self.model} {self.color} ({self.registration_number})"
-        
+
+    def is_available(self, start_date, end_date):
+        """
+        Checks if the vehicle is free between start_date and end_date
+        against both system Bookings and manual VehicleUnavailability blocks.
+        """
+        # 1. Check for overlapping system bookings (confirmed, active, or pending)
+        has_booking_conflict = self.bookings.filter(
+            booking_status__in=["confirmed", "active", "pending"],
+            start_date__lt=end_date,
+            end_date__gt=start_date
+        ).exists()
+
+        if has_booking_conflict:
+            return False
+
+        # 2. Check for overlapping manual unavailability blocks
+        has_manual_block = self.unavailable_periods.filter(
+            start_date__lt=end_date,
+            end_date__gt=start_date
+        ).exists()
+
+        return not has_manual_block
+
+    def get_occupied_ranges(self):
+        """
+        Returns a single unified list of all blocked date ranges
+        combining system bookings and manual blocks.
+        """
+        occupied = []
+
+        # System bookings
+        active_bookings = self.bookings.filter(
+            booking_status__in=["confirmed", "active", "pending"]
+        )
+        for b in active_bookings:
+            occupied.append({
+                "id": f"booking-{b.id}",
+                "start_date": str(b.start_date),
+                "end_date": str(b.end_date),
+                "type": "system_booking",
+                "title": f"Booked: {b.customer.first_name} {b.customer.last_name}",
+            })
+
+        # Manual blocks (Airbnb, maintenance, etc.)
+        manual_blocks = self.unavailable_periods.all()
+        for u in manual_blocks:
+            reason_label = u.reason.capitalize() if u.reason else "Unavailable"
+            occupied.append({
+                "id": f"block-{u.id}",
+                "start_date": str(u.start_date),
+                "end_date": str(u.end_date),
+                "type": "manual_block",
+                "title": f"Blocked ({reason_label})",
+            })
+
+        return occupied
+
+
 class VehicleImage(models.Model):
     vehicle = models.ForeignKey(Vehicle, related_name="images", on_delete=models.CASCADE)
     image = models.ImageField(upload_to="vehicle_images/")
 
     def __str__(self):
         return f"Image for {self.vehicle.make} {self.vehicle.model}"
-
-
 
 
 class MaintenanceRecord(models.Model):
@@ -70,16 +126,24 @@ class MaintenanceRecord(models.Model):
 
 
 
+# staff/models.py
+
 class VehicleUnavailability(models.Model):
+    REASON_CHOICES = [
+        ("external_booking", "External Booking (e.g. Airbnb/Manual)"),
+        ("maintenance", "Maintenance / Service"),
+        ("personal", "Personal Use"),
+        ("other", "Other"),
+    ]
+
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="unavailable_periods")
     start_date = models.DateField()
     end_date = models.DateField()
-    reason = models.CharField(max_length=255, choices=[("maintenance", "Maintenance"),("booking", "Booking"), ("other", "Other")], default="other")
-
+    reason = models.CharField(max_length=255)
+    notes = models.TextField(blank=True, null=True)  # Optional note for context
 
     def __str__(self):
-        return f"{self.vehicle.make} {self.vehicle.model} unavailable from {self.start_date} to {self.end_date}"
-
+        return f"{self.vehicle.make} {self.vehicle.model} manual block ({self.reason}) from {self.start_date} to {self.end_date}"
 
 
 

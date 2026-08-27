@@ -1,6 +1,8 @@
+# regulator/urls.py
+
 from django.urls import path, include
 from .views import (
-    CustomerRegisterView, AgentRegisterView, AgencyRegisterView, LoginView, CustomerViewSet, me_view, get_csrf_token,  CookieTokenRefreshView, logout_view
+    CustomerRegisterView, AgentRegisterView, AgencyRegisterView, LoginView, CustomerViewSet, me_view, get_csrf_token, CookieTokenRefreshView, logout_view
 )
 from rest_framework.routers import DefaultRouter
 from staff.views import (
@@ -8,6 +10,7 @@ from staff.views import (
     MaintenanceRecordViewSet,
     VehicleImageViewSet,
     BookingViewSet,
+    VehicleUnavailabilityViewSet,  # <--- 1. ADD THIS IMPORT
     AgentLocationListView,
     FinalizeBookingView
 )
@@ -18,14 +21,13 @@ from rest_framework_simplejwt.views import (
 from .analytics.analytics import AnalyticsAPIView
 
 
-
-
 router = DefaultRouter()
 router.register(r'customers', CustomerViewSet)
 router.register(r"staff-vehicles", VehicleViewSet, basename="vehicle")
 router.register(r"vehicle-images", VehicleImageViewSet, basename="vehicle-image")
 router.register(r"maintenance", MaintenanceRecordViewSet, basename="maintenance")
 router.register(r"bookings", BookingViewSet, basename="booking")
+router.register(r"unavailability", VehicleUnavailabilityViewSet, basename="unavailability") # <--- 2. ADD THIS ROUTE
 router.register(r"booking-requests", BookingRequestViewSet, basename="booking-request")
 router.register(r"public-vehicles", PublicVehicleViewSet, basename="public-vehicles")
 router.register(r'staff-booking-requests', StaffBookingRequestViewSet, basename='staff-booking-request')
